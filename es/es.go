@@ -42,10 +42,6 @@ func (es *ElasticSearch) Ping() error {
 	return nil
 }
 
-func (es *ElasticSearch) Do() {
-
-}
-
 func NewESClient(host string, port int, zone string) (*ElasticSearch, error) {
 	es := &ElasticSearch{
 		addr: &net.TCPAddr{
@@ -63,4 +59,8 @@ func NewESClient(host string, port int, zone string) (*ElasticSearch, error) {
 		return nil, err
 	}
 	return es, nil
+}
+
+func (es *ElasticSearch) Do() {
+
 }
