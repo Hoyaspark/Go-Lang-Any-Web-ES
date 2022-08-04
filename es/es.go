@@ -45,9 +45,11 @@ func (es *ElasticSearch) SetQuery(query *Query) {
 	es.query = query
 }
 
-func (es *ElasticSearch) Ping(wg *sync.WaitGroup, ch chan<- error) {
+func (es *ElasticSearch) Ping(done chan<- struct{}, ch chan<- error) {
 
-	defer wg.Done()
+	defer func() {
+		done <- struct{}{}
+	}()
 
 	res, err := http.Get(es.url)
 
@@ -65,8 +67,6 @@ func (es *ElasticSearch) Ping(wg *sync.WaitGroup, ch chan<- error) {
 		return
 	}
 
-	close(ch)
-
 	return
 }
 
@@ -82,18 +82,19 @@ func NewESClient(url string, timeout time.Duration, auth *Auth) (*ElasticSearch,
 		query: &Query{},
 	}
 
-	var wg sync.WaitGroup
 	ch := make(chan error)
-	wg.Add(1)
+	done := make(chan struct{})
 
-	go es.Ping(&wg, ch)
+	go es.Ping(done, ch)
 
-	wg.Wait()
-
-	if err, ok := <-ch; err != nil || ok {
-		return nil, err
+	for {
+		select {
+		case <-ch:
+			return nil, <-ch
+		case <-done:
+			return es, nil
+		}
 	}
-	return es, nil
 }
 
 func (es *ElasticSearch) Search() (*Response, error) {
