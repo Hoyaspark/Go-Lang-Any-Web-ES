@@ -22,14 +22,14 @@ func NewAuth(username, password string) *Auth {
 
 type Query struct {
 	index string
-	query interface{}
+	query map[string]interface{}
 }
 
 func (q *Query) SetIndex(index string) {
 	q.index = index
 }
 
-func (q *Query) SetQuery(query interface{}) {
+func (q *Query) SetQuery(query map[string]interface{}) {
 	q.query = query
 }
 
@@ -84,19 +84,17 @@ func NewESClient(url string, timeout time.Duration, auth *Auth) (*ElasticSearch,
 }
 
 func (es *ElasticSearch) Search() (*Response, error) {
-	var buf bytes.Buffer
 
-	log.Println(es.query.query)
-	err := json.NewEncoder(&buf).Encode(es.query.query)
+	b, err := json.Marshal(&es.query.query)
 
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 
-	log.Println(buf)
+	r, err := http.NewRequest("POST", es.url+"/"+es.query.index+"/_search", bytes.NewBuffer(b))
 
-	r, err := http.NewRequest("POST", es.url+"/"+es.query.index+"/_search", &buf)
+	r.Header.Set("Content-Type", "application/json")
 
 	if err != nil {
 		log.Println(err)
@@ -122,6 +120,8 @@ func (es *ElasticSearch) Search() (*Response, error) {
 	var result Response
 
 	err = json.NewDecoder(res.Body).Decode(&result)
+
+	defer res.Body.Close()
 
 	if err != nil {
 		log.Println(err)
